@@ -304,6 +304,14 @@ public:
 		END_ROUND
 	};
 
+
+	struct PolygonCentroid {
+		Vector2 centroid;
+		real_t signed_area2x = 0.0;
+	};
+	static PolygonCentroid calculate_polygon_centroid(const Vector<Vector2> &p_points);
+	static Vector2 get_polygons_geometric_center(const Vector<Vector<Vector2>> &p_polygons);
+
 	static Vector<Vector<Point2>> merge_polygons(const Vector<Point2> &p_polygon_a, const Vector<Point2> &p_polygon_b) {
 		return _polypaths_do_operation(OPERATION_UNION, p_polygon_a, p_polygon_b);
 	}
