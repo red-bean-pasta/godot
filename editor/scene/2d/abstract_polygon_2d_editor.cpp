@@ -130,17 +130,22 @@ bool AbstractPolygon2DEditor::_has_resource() const {
 void AbstractPolygon2DEditor::_create_resource() {
 }
 
-Vector2 AbstractPolygon2DEditor::_get_geometric_center() const {
+
+Vector<Vector<Vector2>> AbstractPolygon2DEditor::_get_polygons() const {
 	Vector<Vector<Vector2>> polygons;
 
-	const int polygon_count = _get_polygon_count();
-	polygons.resize(polygon_count);
+	const int count = _get_polygon_count();
+	polygons.resize(count);
 
-	for (int i = 0; i < polygon_count; i++) {
-		polygons.append(_get_polygon(i));
+	for (int i = 0; i < count; i++) {
+		polygons.write[i] = _get_polygon(i);
 	}
 
-	return Geometry2D::get_polygons_geometric_center(polygons);
+	return polygons;
+}
+
+Vector2 AbstractPolygon2DEditor::_get_geometric_center() const {
+	return Geometry2D::get_polygons_geometric_center(_get_polygons());
 }
 
 void AbstractPolygon2DEditor::_menu_option(int p_option) {
@@ -171,20 +176,15 @@ void AbstractPolygon2DEditor::_menu_option(int p_option) {
 			EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 			undo_redo->create_action(TTR("Move Origin to Geometric Center"));
 
-			Vector2 center = _get_geometric_center();
-
-			int n_polygons = _get_polygon_count();
-			for (int i = 0; i < n_polygons; i++) {
-				const Vector<Vector2> &vertices = _get_polygon(i);
-				int n_points = vertices.size();
-
-				Vector<Vector2> new_vertices;
-				new_vertices.resize(n_points);
-				for (int n = 0; n < n_points; n++) {
-					new_vertices.write[n] = vertices[n] - center;
-				}
-				_action_set_polygon(i, vertices, new_vertices);
+			const Vector<Vector<Vector2>> polygons = _get_polygons();
+			const Vector2 center = Geometry2D::get_polygons_geometric_center(polygons);
+			const Vector<Vector<Vector2>> centered_polygons = Geometry2D::get_origin_moved_polygons(center, polygons);
+			
+			const int count = polygons.size();
+			for (int i = 0; i < count; i++) {
+				_action_set_polygon(i, polygons[i], centered_polygons[i]);
 			}
+
 			Node2D *node = _get_node();
 			Vector2 node_pos = node->get_position();
 			undo_redo->add_do_method(node, "set_position", node_pos + node->get_transform().basis_xform(center));

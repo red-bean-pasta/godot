@@ -312,6 +312,9 @@ public:
 	static PolygonCentroid calculate_polygon_centroid(const Vector<Vector2> &p_points);
 	static Vector2 get_polygons_geometric_center(const Vector<Vector<Vector2>> &p_polygons);
 
+	static Vector<Vector<Vector2>> get_origin_moved_polygons(Vector2 p_dest_origin, const Vector<Vector<Vector2>> &p_polygons);
+	static Vector<Vector<Vector2>> get_origin_centered_polygons(const Vector<Vector<Vector2>> &p_polygons);
+
 	static Vector<Vector<Point2>> merge_polygons(const Vector<Point2> &p_polygon_a, const Vector<Point2> &p_polygon_b) {
 		return _polypaths_do_operation(OPERATION_UNION, p_polygon_a, p_polygon_b);
 	}

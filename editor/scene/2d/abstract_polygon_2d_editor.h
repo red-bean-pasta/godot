@@ -141,6 +141,8 @@ protected:
 	virtual void _action_set_polygon(int p_idx, const Variant &p_previous, const Variant &p_polygon);
 	virtual void _commit_action();
 
+	Vector<Vector<Vector2>> _get_polygons() const;
+
 	virtual Vector2 _get_geometric_center() const;
 
 	virtual bool _has_resource() const;

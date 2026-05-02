@@ -99,6 +99,29 @@ Vector2 Geometry2D::get_polygons_geometric_center(const Vector<Vector<Vector2>> 
 	return weighted_centroid_sum / area2x_sum;
 }
 
+Vector<Vector<Vector2>> Geometry2D::get_origin_moved_polygons(const Vector2 p_dest_origin, const Vector<Vector<Vector2>> &p_polygons) {
+	int n_polygons = p_polygons.size();
+	Vector<Vector<Vector2>> new_polygons;
+	new_polygons.resize(n_polygons);
+	for (int i = 0; i < n_polygons; i++) {
+		const Vector<Vector2> &vertices = p_polygons[i];
+		int n_points = vertices.size();
+
+		Vector<Vector2> new_vertices;
+		new_vertices.resize(n_points);
+		for (int n = 0; n < n_points; n++) {
+			new_vertices.write[n] = vertices[n] - p_dest_origin;
+		}
+		new_polygons.set(i, new_vertices);
+	}
+	return new_polygons;
+}
+
+Vector<Vector<Vector2>> Geometry2D::get_origin_centered_polygons(const Vector<Vector<Vector2>> &p_polygons) {
+	Vector2 center = get_polygons_geometric_center(p_polygons);
+	return get_origin_moved_polygons(center, p_polygons);
+}
+
 void Geometry2D::merge_many_polygons(const Vector<Vector<Vector2>> &p_polygons, Vector<Vector<Vector2>> &r_out_polygons, Vector<Vector<Vector2>> &r_out_holes) {
 	using namespace Clipper2Lib;
 
