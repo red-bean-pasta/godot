@@ -203,6 +203,25 @@ Vector<Point2> CollisionPolygon2D::get_polygon() const {
 	return polygon;
 }
 
+Vector2 CollisionPolygon2D::get_geometric_center() const {
+	return Geometry2D::get_polygon_geometric_center(polygon);
+}
+
+void CollisionPolygon2D::move_origin_to_geometric_center() {
+	if (polygon.is_empty()) {
+		return;
+	}
+
+	const Vector2 center = get_geometric_center();
+	if (center.is_zero_approx()) {
+		return;
+	}
+
+	const Vector<Vector2> new_polygon = Geometry2D::get_origin_moved_polygon(center, polygon);
+	set_polygon(new_polygon);
+	set_position(get_position() + get_transform().basis_xform(center));
+}
+
 void CollisionPolygon2D::set_build_mode(BuildMode p_mode) {
 	ERR_FAIL_INDEX((int)p_mode, 2);
 	build_mode = p_mode;
@@ -314,6 +333,9 @@ Vector2 CollisionPolygon2D::get_one_way_collision_direction() const {
 void CollisionPolygon2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_polygon", "polygon"), &CollisionPolygon2D::set_polygon);
 	ClassDB::bind_method(D_METHOD("get_polygon"), &CollisionPolygon2D::get_polygon);
+
+	ClassDB::bind_method(D_METHOD("get_geometric_center"), &CollisionPolygon2D::get_geometric_center);
+	ClassDB::bind_method(D_METHOD("move_origin_to_geometric_center"), &CollisionPolygon2D::move_origin_to_geometric_center);
 
 	ClassDB::bind_method(D_METHOD("set_build_mode", "build_mode"), &CollisionPolygon2D::set_build_mode);
 	ClassDB::bind_method(D_METHOD("get_build_mode"), &CollisionPolygon2D::get_build_mode);

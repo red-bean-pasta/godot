@@ -76,6 +76,9 @@ public:
 
 	void set_polygon(const Vector<Point2> &p_polygon);
 	Vector<Point2> get_polygon() const;
+	
+	Vector2 get_geometric_center() const;
+	void move_origin_to_geometric_center();
 
 	PackedStringArray get_configuration_warnings() const override;
 
