@@ -41,11 +41,28 @@ GODOT_GCC_WARNING_POP
 
 const int clipper_precision = 5; // Based on CMP_EPSILON.
 
-Geometry2D::PolygonCentroid Geometry2D::calculate_polygon_centroid(const Vector<Vector2> &p_points) {
+
+Vector2 Geometry2D::_calculate_vertices_average(const Vector<Vector2> &p_points) {
+	const int count = p_points.size();
+
+	if (count == 0) {
+		return Vector2();
+	}
+
+	Vector2 sum;
+	for (int i = 0; i < count; i++) {
+		sum += p_points[i];
+	}
+	const Vector2 average = sum / count;
+	return average;
+}
+
+Geometry2D::PolygonCentroid Geometry2D::_calculate_polygon_centroid(const Vector<Vector2> &p_points) {
 	PolygonCentroid result;
 
 	const int count = p_points.size();
 	if (count < 3) {
+		result.centroid = _calculate_vertices_average(p_points);
 		return result;
 	}
 
@@ -64,6 +81,7 @@ Geometry2D::PolygonCentroid Geometry2D::calculate_polygon_centroid(const Vector<
 	}
 
 	if (Math::is_zero_approx(signed_area2x_sum)) {
+		result.centroid = _calculate_vertices_average(p_points);
 		return result;
 	}
 
@@ -74,51 +92,91 @@ Geometry2D::PolygonCentroid Geometry2D::calculate_polygon_centroid(const Vector<
 	return result;
 }
 
+void Geometry2D::_decompose_polygon_and_accumulate_centroid(const Vector<Vector2> &p_points, Vector2 &r_weighted_centroid_sum, real_t &r_abs_area2x_sum) {
+	const Vector<Vector<Point2>> decomposed_polygons = decompose_polygon_in_convex(p_points);
+	for (const Vector<Point2> &sub_polygon : decomposed_polygons) {
+		const auto [centroid, signed_area2x] = _calculate_polygon_centroid(sub_polygon);
+		const real_t abs_sub_area2x = Math::abs(signed_area2x);
+		if (Math::is_zero_approx(abs_sub_area2x)) {
+			continue;
+		}
+		r_weighted_centroid_sum += centroid * abs_sub_area2x;
+		r_abs_area2x_sum += abs_sub_area2x;
+	}
+}
+
+Vector2 Geometry2D::get_polygon_geometric_center(const Vector<Vector2> &p_points) {
+	Vector2 weighted_centroid_sum;
+	real_t abs_area2x_sum = 0.0;
+
+	_decompose_polygon_and_accumulate_centroid(p_points, weighted_centroid_sum, abs_area2x_sum);
+
+	if (Math::is_zero_approx(abs_area2x_sum)) {
+		return _calculate_vertices_average(p_points);
+	}
+	return weighted_centroid_sum / abs_area2x_sum;
+}
+
 Vector2 Geometry2D::get_polygons_geometric_center(const Vector<Vector<Vector2>> &p_polygons){
 	Vector2 weighted_centroid_sum;
-	double area2x_sum = 0.0;
+	real_t abs_area2x_sum = 0.0;
 
 	const int count = p_polygons.size();
 	for (int i = 0; i < count; i++) {
 		const Vector<Vector2> &vertices = p_polygons[i];
-		const Vector<Vector<Point2>> decomposed_polygons = decompose_polygon_in_convex(vertices);
-		for (const Vector<Point2> &sub_polygon : decomposed_polygons) {
-			const PolygonCentroid centroid = calculate_polygon_centroid(sub_polygon);
-			const real_t abs_sub_area2x = Math::abs(centroid.signed_area2x);
-			if (Math::is_zero_approx(abs_sub_area2x)) {
-				continue;
-			}
-			weighted_centroid_sum += centroid.centroid * abs_sub_area2x;
-			area2x_sum += abs_sub_area2x;
-		}
+		_decompose_polygon_and_accumulate_centroid(vertices, weighted_centroid_sum, abs_area2x_sum);
 	}
 
-	if (Math::is_zero_approx(area2x_sum)) {
-		return Vector2();
+	if (Math::is_zero_approx(abs_area2x_sum)) { // Fallback when all polygons have 0 area
+		int point_count = 0;
+		Vector2 vertex_sum;
+		for (int i = 0; i < count; i++) {
+			const Vector<Vector2> &vertices = p_polygons[i];
+			for (int j = 0; j < vertices.size(); j++) {
+				vertex_sum += vertices[j];
+				point_count++;
+			}
+		}
+		if (point_count == 0) {
+			return Vector2();
+		}
+		return vertex_sum / point_count;
 	}
-	return weighted_centroid_sum / area2x_sum;
+	return weighted_centroid_sum / abs_area2x_sum;
+}
+
+Vector<Vector2> Geometry2D::get_origin_moved_polygon(const Vector2 p_dest_origin, const Vector<Vector2> &p_points) {
+	const int count = p_points.size();
+
+	Vector<Vector2> new_points;
+	new_points.resize(count);
+
+	for (int i = 0; i < count; i++) {
+		new_points.write[i] = p_points[i] - p_dest_origin;
+	}
+
+	return new_points;
 }
 
 Vector<Vector<Vector2>> Geometry2D::get_origin_moved_polygons(const Vector2 p_dest_origin, const Vector<Vector<Vector2>> &p_polygons) {
-	int n_polygons = p_polygons.size();
+	const int n_polygons = p_polygons.size();
 	Vector<Vector<Vector2>> new_polygons;
 	new_polygons.resize(n_polygons);
 	for (int i = 0; i < n_polygons; i++) {
 		const Vector<Vector2> &vertices = p_polygons[i];
-		int n_points = vertices.size();
-
-		Vector<Vector2> new_vertices;
-		new_vertices.resize(n_points);
-		for (int n = 0; n < n_points; n++) {
-			new_vertices.write[n] = vertices[n] - p_dest_origin;
-		}
-		new_polygons.set(i, new_vertices);
+		Vector<Vector2> moved_vertices = get_origin_moved_polygon(p_dest_origin, vertices);
+		new_polygons.set(i, moved_vertices);
 	}
 	return new_polygons;
 }
 
+Vector<Vector2> Geometry2D::get_origin_centered_polygon(const Vector<Vector2> &p_points) {
+	const Vector2 center = get_polygon_geometric_center(p_points);
+	return get_origin_moved_polygon(center, p_points);
+}
+
 Vector<Vector<Vector2>> Geometry2D::get_origin_centered_polygons(const Vector<Vector<Vector2>> &p_polygons) {
-	Vector2 center = get_polygons_geometric_center(p_polygons);
+	const Vector2 center = get_polygons_geometric_center(p_polygons);
 	return get_origin_moved_polygons(center, p_polygons);
 }
 

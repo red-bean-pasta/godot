@@ -40,6 +40,14 @@
 #include "core/templates/vector.h"
 
 class Geometry2D {
+	struct PolygonCentroid {
+		Vector2 centroid;
+		real_t signed_area2x = 0.0;
+	};
+	static Vector2 _calculate_vertices_average(const Vector<Vector2> &p_points);
+	static PolygonCentroid _calculate_polygon_centroid(const Vector<Vector2> &p_points);
+	static void _decompose_polygon_and_accumulate_centroid(const Vector<Vector2> &p_points, Vector2 &r_weighted_centroid_sum, real_t &r_abs_area2x_sum);
+
 public:
 	static real_t get_closest_points_between_segments(const Vector2 &p1, const Vector2 &q1, const Vector2 &p2, const Vector2 &q2, Vector2 &c1, Vector2 &c2) {
 		Vector2 d1 = q1 - p1; // Direction vector of segment S1.
@@ -304,15 +312,12 @@ public:
 		END_ROUND
 	};
 
-
-	struct PolygonCentroid {
-		Vector2 centroid;
-		real_t signed_area2x = 0.0;
-	};
-	static PolygonCentroid calculate_polygon_centroid(const Vector<Vector2> &p_points);
+	static Vector2 get_polygon_geometric_center(const Vector<Vector2> &p_points);
 	static Vector2 get_polygons_geometric_center(const Vector<Vector<Vector2>> &p_polygons);
 
+	static Vector<Vector2> get_origin_moved_polygon(Vector2 p_dest_origin, const Vector<Vector2> &p_points);
 	static Vector<Vector<Vector2>> get_origin_moved_polygons(Vector2 p_dest_origin, const Vector<Vector<Vector2>> &p_polygons);
+	static Vector<Vector2> get_origin_centered_polygon(const Vector<Vector2> &p_points);
 	static Vector<Vector<Vector2>> get_origin_centered_polygons(const Vector<Vector<Vector2>> &p_polygons);
 
 	static Vector<Vector<Point2>> merge_polygons(const Vector<Point2> &p_polygon_a, const Vector<Point2> &p_polygon_b) {
